@@ -110,11 +110,13 @@ ni llamadas desde el navegador a ESIOS. Todos los recursos usan rutas relativas.
 
 Para publicar (acción inicial del propietario):
 
-1. Crea un repositorio público en GitHub y sube este repositorio a su rama `main`.
+1. Usa el repositorio público [gonzaponte/vottle](https://github.com/gonzaponte/vottle)
+   y sube los cambios a su rama `main` (`git push -u origin main`).
 2. En **Settings → Pages → Build and deployment**, selecciona **GitHub Actions**.
 3. Permite las acciones del workflow y los despliegues del entorno `github-pages`.
 4. Ejecuta **Actions → Publish dashboard → Run workflow**.
-5. Abre `https://USUARIO.github.io/REPOSITORIO/` (o la URL que indique Pages).
+5. Abre [gonzaponte.github.io/vottle](https://gonzaponte.github.io/vottle/)
+   (o la URL que indique Pages).
 
 No se necesita PAT ni commits diarios de datos. El job de construcción solo lee el
 repositorio; el job de despliegue recibe `pages: write` e `id-token: write`.
@@ -172,9 +174,10 @@ EUR/MWh to EUR/kWh using decimal arithmetic. Each available day includes the sou
 retrieval timestamp, validity date, timezone and tariff references. Tomorrow being
 unpublished is distinct from a failed or malformed request. No fabricated fallback is used.
 
-**Deployment:** create a public GitHub repository, push `main`, select GitHub Actions in
+**Deployment:** use the public [gonzaponte/vottle](https://github.com/gonzaponte/vottle)
+repository, push `main` (`git push -u origin main`), select GitHub Actions in
 Settings → Pages, and run the Publish dashboard workflow. The expected URL is
-`https://USERNAME.github.io/REPOSITORY/`. Pushes, manual dispatch and a timezone-aware
+[gonzaponte.github.io/vottle](https://gonzaponte.github.io/vottle/). Pushes, manual dispatch and a timezone-aware
 21:30 Madrid schedule run checks, fetch official prices and deploy using official Pages
 actions. No PAT or generated-data commits are needed. Failed acquisition leaves the prior
 site deployed; stale dates are visibly flagged. Retry manually in Actions after an outage.

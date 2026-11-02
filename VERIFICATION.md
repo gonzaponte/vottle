@@ -21,7 +21,9 @@ normalization distinguishes duplicate 02:00 instants using their UTC offsets.
 
 ## Verification boundaries
 
-Automated tests do not contact the network. Live checks are separate, A Chromium smoke test subsequently passed at a repository subpath, checking chart
+Automated tests do not contact the network. Live checks are separate. A Chromium smoke test subsequently passed at a repository subpath, checking chart
 rendering, detailed components, consumption controls, theme, mobile overflow and
-unpublished tomorrow. See `scripts/browser-smoke.mjs` and `docs/preview.png`. Deployment requires a GitHub remote and Pages
-configuration by the repository owner. No deployment is claimed here.
+unpublished tomorrow. See `scripts/browser-smoke.mjs` and `docs/preview.png`.
+Deployment to [gonzaponte.github.io/vottle](https://gonzaponte.github.io/vottle/)
+requires the owner to enable GitHub Pages for [gonzaponte/vottle](https://github.com/gonzaponte/vottle).
+No deployment is claimed here.

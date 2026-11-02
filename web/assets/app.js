@@ -197,10 +197,10 @@ function render() {
           grid: { display: false },
           ticks: {
             color,
-            maxTicksLimit: 8,
+            maxTicksLimit: hours.length,
             maxRotation: 0,
             callback(value) {
-              return hours[value].label.replace(":00", "");
+              return hours[value].label.slice(0, 5);
             },
           },
         },

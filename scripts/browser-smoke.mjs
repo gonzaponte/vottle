@@ -78,6 +78,20 @@ try {
   assert.equal(state.hidden, false);
   assert.equal(state.rows, 24);
   assert.equal(state.chart, 3);
+  const ticks = await evaluate(
+    `Chart.getChart(document.querySelector('#chart')).scales.x.ticks.map(tick => tick.label)`,
+  );
+  assert.ok(ticks.length > 8, "Desktop shows more frequent hourly labels");
+  assert.ok(
+    ticks.every((label) => /^\d{2}:\d{2}$/.test(label)),
+    "Axis labels omit timezone suffixes",
+  );
+  assert.ok(
+    await evaluate(
+      `Chart.getChart(document.querySelector('#chart')).data.labels.every(label => /CET|CEST/.test(label))`,
+    ),
+    "Tooltips retain timezone details",
+  );
   assert.ok(state.cost.includes("€"));
   assert.ok(
     mismatch

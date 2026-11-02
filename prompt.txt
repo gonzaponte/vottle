@@ -1,0 +1,386 @@
+# Project: Spanish Electricity Price Dashboard
+
+You are a senior full-stack software engineer. Create a complete, production-ready repository from scratch for a minimalist, interactive website showing hourly electricity prices in Spain.
+
+Do not merely scaffold the project. Implement the application, data acquisition, development environment, tests, automation, documentation, and deployment configuration.
+
+Work autonomously, make reasonable technical decisions, and complete as much as possible without asking questions. Do not leave placeholders, unfinished implementations, or TODOs for core functionality.
+
+## 1. Project objective
+
+Create a public dashboard displaying the Spanish regulated electricity tariff (PVPC), including a breakdown of the hourly price into:
+
+- Total PVPC electricity price.
+- Regulated electricity network access tariffs (peajes).
+- Regulated electricity system charges (cargos).
+- Combined peajes + cargos.
+- Remaining components of the PVPC price.
+
+The dashboard must make clear that peajes and cargos are already included in PVPC, rather than costs that need to be added again.
+
+The website must update automatically every day and be hosted for free on GitHub Pages.
+
+Keep the application lightweight, aesthetically polished, maintainable, and easy to extend.
+
+Project title: vottle (Visor Online de Tarifas y Tramos de la Luz en España)
+
+## 2. Technology stack
+
+Use:
+
+- HTML5, modern CSS and vanilla JavaScript.
+- Chart.js for interactive graphs.
+- Python for data acquisition, processing and static data generation.
+- GitHub Pages for hosting.
+- GitHub Actions for CI/CD and scheduled daily updates.
+- Nix flakes for reproducible dependency management.
+- direnv for automatic development environment activation.
+- just for command execution.
+
+Do not introduce React, Vue, Next.js, a database, Docker, or a backend application server.
+
+Avoid npm and pip dependency management where practical. Manage development dependencies through Nix. Pin third-party dependencies, including Chart.js, to specific versions.
+
+Prefer a locally hosted Chart.js asset with documented provenance and licensing. Use a reproducible Nix-managed download if practical.
+
+## 3. Repository and development environment
+
+Initialize a Git repository with `main` as the default branch. Make small, focused commits as you implement parts of the code.
+
+Create at least:
+
+- `flake.nix` and a committed `flake.lock`.
+- `.envrc` containing `use flake`.
+- `justfile`.
+- `.gitignore`.
+- `README.md`.
+- `LICENSE` (MIT).
+- Frontend source files.
+- Python data-processing modules.
+- Configuration for regulated electricity charges.
+- Automated tests and representative fixtures.
+- GitHub Actions workflows for CI and deployment.
+
+The Nix flake must provide a working `devShell` with Python, Node.js (for JavaScript testing), just, Git and appropriate formatting/linting tools.
+
+Support Linux x86_64 and other common Nix platforms where feasible.
+
+Ensure that the complete project can be developed and tested using `nix develop`, without requiring global installation of Python or JavaScript packages.
+
+Document the one-time requirement to install and configure direnv and nix-direnv, and to run `direnv allow`.
+
+## 4. justfile commands
+
+Implement these recipes, with useful descriptions:
+
+- `just` or `just --list`: display available commands.
+- `just dev`: run the website locally with live development conveniences.
+- `just fetch`: download and validate current electricity data.
+- `just build`: produce the complete static website.
+- `just update`: fetch fresh data and rebuild.
+- `just test`: run all unit tests.
+- `just lint`: run available static checks and formatting validation.
+- `just fmt`: format source files.
+- `just check`: run all quality checks.
+- `just clean`: remove generated artifacts.
+
+Ensure recipes use the Nix-provided tools and have informative error messages. Do not require `direnv allow` when running commands through `nix develop`.
+
+## 5. Official electricity data
+
+Use Red Eléctrica de España (ESIOS) as the authoritative data source.
+
+Initial endpoint to investigate:
+
+https://api.esios.ree.es/archives/70/download_json?locale=es&date=YYYY-MM-DD
+
+The API has historically exposed fields including:
+
+- `Dia`: date.
+- `Hora`: hourly interval.
+- `PCB`: total PVPC price.
+- `TEUPCB`: regulated energy term, including peajes and cargos.
+
+Verify the current API schema, units and field meanings against the actual response and official documentation before implementing the parser.
+
+The official ESIOS documentation can be consulted at:
+
+https://www.esios.ree.es/es/pvpc
+
+Do not assume the API schema is unchanged without checking it.
+
+Important requirements:
+
+1. Fetch real prices for today and tomorrow when published.
+2. Use the `Europe/Madrid` timezone consistently.
+3. Convert source units correctly, showing prices in €/kWh or cents/kWh.
+4. Support European number formats, including decimal commas.
+5. Support negative electricity prices.
+6. Handle days containing 23 or 25 hourly intervals because of daylight-saving changes, including duplicate local hour labels.
+7. Validate the dates, number of intervals, numerical fields and required components.
+8. Implement timeouts, retries, and clear error reporting.
+9. Never replace failed API requests with invented prices.
+10. Record provenance, source URLs, retrieval timestamps and the validity date of each dataset.
+
+For days when tomorrow's prices have not yet been published, provide a clear "Not yet available" state.
+
+## 6. Regulated peajes and cargos
+
+Where possible, separate the total regulated component into network access tariffs and system charges.
+
+Official reference:
+
+https://www.miteco.gob.es/es/energia/energia-electrica/electricidad/peajes.html
+
+For the domestic 2.0TD tariff, the energy component has three regulated periods: punta, llano and valle.
+
+Store the corresponding annual regulated prices and their official reference URLs in a structured configuration file rather than burying them in JavaScript.
+
+For 2026, consult and validate the official tariffs. The expected reference values in €/kWh are:
+
+| Period | Peajes | Cargos |
+|---|---:|---:|
+| Punta | 0.033261 | 0.064292 |
+| Llano | 0.016409 | 0.012858 |
+| Valle | 0.000077 | 0.003215 |
+
+Verify these values, their precision and effective dates against official sources.
+
+Where the ESIOS dataset contains the aggregate regulated energy term, cross-check calculated peajes + cargos against the published value. Account for source rounding and explain any legitimate differences.
+
+Do not assume that a weekend always has a low total PVPC. The regulated component may be constant while other price components vary.
+
+Correctly handle the national holiday rules applicable to 2.0TD, rather than using all regional or municipal holidays indiscriminately.
+
+Regulated tariffs may change from year to year. Implement year-specific configuration and fail safely if a required tariff definition is unavailable. Never silently reuse outdated regulated rates.
+
+## 7. Frontend: visual design
+
+The website should resemble a clean, modern financial or energy analytics dashboard.
+
+Design requirements:
+
+- Minimalist interface.
+- Responsive layout for desktop and mobile.
+- Light and dark themes, preferably following the operating system by default.
+- Attractive typography, good whitespace and restrained use of colors.
+- Accessible controls and sufficient contrast.
+- Clear Spanish labels, with English code and developer documentation.
+- No unnecessary navigation or clutter.
+
+Use Chart.js to build the main interactive graph.
+
+Display at least these data series:
+
+1. Total PVPC hourly price.
+2. Peajes + cargos.
+3. Remaining PVPC components.
+
+Allow the user to enable or disable series using the chart legend.
+
+Provide a separate detailed view showing peajes and cargos individually when the relevant official values are available.
+
+Represent punta, llano and valle periods visually, for example with subtle background shading or a color-coded timeline.
+
+The graph must:
+
+- Display 24 hourly intervals on normal days, and 23/25 when appropriate.
+- Correctly display negative values.
+- Have interactive tooltips with exact prices and units.
+- Be easy to interpret on small screens.
+- Use the correct date and local time labels.
+- Avoid misleading stacking of components when negative values occur.
+- Clearly identify total prices and constituent components.
+
+Make the graph the central feature of the page.
+
+The visual interface should display text in Spanish. The code remains in English.
+
+## 8. Dashboard controls and statistics
+
+Implement:
+
+**Date selection**
+- Today.
+- Tomorrow, when available.
+
+**Summary statistics**
+- Daily average PVPC.
+- Minimum hourly price.
+- Maximum hourly price.
+- Cheapest hour.
+- Most expensive hour.
+- Current hour, highlighted when viewing today.
+
+**Cost calculator**
+- An input or slider for electricity consumption in kWh.
+- Display the cost of consuming that amount during each selected hour.
+- Allow the user to compare different hours.
+
+**Optional tax estimation**
+- A toggle to include applicable taxes if current, authoritative tax rules can be implemented correctly.
+- Explain that estimated variable consumption cost is not the complete electricity bill.
+- Do not mix the fixed contracted-power charge with the hourly energy price.
+- Keep any tax rates configurable and source-documented.
+
+**Additional information**
+- Publication date and most recent update time.
+- Data-source attribution.
+- Explanation of PVPC versus fixed-price commercial tariffs.
+- Explanation of peajes, cargos and the difference between energy and contracted-power charges.
+- Helpful loading, unavailable-data and error states.
+
+Do not add accounts, cookies, tracking or analytics.
+
+## 9. Static data and deployment architecture
+
+GitHub Pages cannot run Python dynamically. Therefore:
+
+1. A Python program fetches the official API data.
+2. The program validates and normalizes the data.
+3. It generates static JSON suitable for direct consumption by the frontend.
+4. The website reads these same-origin JSON files.
+5. GitHub Actions rebuilds and republishes the website automatically.
+
+This architecture must avoid browser-to-ESIOS CORS dependencies.
+
+Keep raw source semantics and normalized representations distinguishable.
+
+The produced website should have a clean output directory such as `dist/`.
+
+All asset and data paths must work when GitHub Pages hosts the website under a repository subpath, such as:
+
+`https://USERNAME.github.io/REPOSITORY/`
+
+The site must not depend on a domain, hostname or repository name hardcoded in source files.
+
+Allow the build process to work with stored test fixtures when external network access is unavailable, but clearly distinguish test/demo data from genuine published prices.
+
+## 10. Automatic daily updates
+
+Create a GitHub Actions deployment workflow.
+
+It must run:
+
+- On pushes to `main`.
+- Automatically every day at approximately 21:30 Europe/Madrid time.
+- Manually through `workflow_dispatch`.
+
+Use timezone-aware scheduling to handle daylight-saving changes.
+
+Each deployment should:
+
+1. Check out the repository.
+2. Install and activate the Nix development environment.
+3. Run automated checks.
+4. Fetch the relevant electricity data.
+5. Validate and generate the normalized JSON.
+6. Build the static website.
+7. Upload the GitHub Pages artifact.
+8. Deploy to GitHub Pages.
+
+Use the official GitHub Pages deployment actions and only the minimum permissions required.
+
+Do not require a personal access token or commit generated data back to the repository unless genuinely necessary.
+
+The scheduled workflow must handle temporary API outages gracefully. Avoid publishing invalid, empty or misleading datasets.
+
+GitHub scheduled workflows may be delayed or disabled after repository inactivity. Document this limitation and provide manual recovery instructions.
+
+## 11. Testing
+
+Provide automated tests for Python data processing and JavaScript calculations.
+
+Include at least:
+
+- Normal 24-hour day.
+- DST transition with 23 hours.
+- DST transition with 25 hours.
+- Negative PVPC values.
+- European decimal number parsing.
+- Unit conversions.
+- Total PVPC decomposition.
+- Period classification, including national holidays.
+- Regulated tariff lookup and annual boundaries.
+- Unavailable tomorrow prices.
+- Malformed API responses.
+- API timeout and HTTP errors.
+- Stale or inconsistent source dates.
+- Cheapest and most expensive hour calculations.
+- Correct separation of energy price and fixed charges.
+
+Use recorded or synthetic test fixtures for deterministic tests.
+
+Tests must not require a live network connection.
+
+Ensure `just check` works locally and within GitHub Actions.
+
+## 12. README
+
+Write a comprehensive but concise README in Spanish and in English.
+
+Include:
+
+1. Project description and features.
+2. Screenshots or a clear visual preview if feasible.
+3. System requirements and Nix installation prerequisites.
+4. How to initialize the development environment with `direnv allow`.
+5. How to use `nix develop` as an alternative.
+6. All just commands.
+7. How to run the dashboard locally.
+8. Explanation of the data sources and price breakdown.
+9. How daily updates work.
+10. How to publish on GitHub Pages.
+11. How to perform a manual deployment/update.
+12. Troubleshooting API failures, GitHub Actions and Pages.
+13. Limitations, especially PVPC versus free-market contracts.
+14. Project structure.
+15. License and source attribution.
+
+Clearly distinguish initial user setup steps from automatic operations.
+
+## 13. Quality requirements
+
+- Keep the code simple and modular.
+- Avoid unnecessary abstractions.
+- Use meaningful filenames and functions.
+- Keep components independently testable.
+- Separate API access, normalization, pricing calculations, tariff configuration and UI rendering.
+- Do not expose secrets or API credentials.
+- Do not use unverified or fabricated pricing data.
+- Validate all untrusted external inputs.
+- Prefer accessibility and clarity over decorative complexity.
+- Do not overengineer the project.
+
+## 14. Completion and acceptance criteria
+
+The project is complete only when:
+
+- The repository has been initialized.
+- `flake.nix` evaluates correctly and `flake.lock` is committed.
+- The `direnv` environment is configured.
+- All required just recipes exist and work.
+- The electricity data pipeline is implemented.
+- The dashboard renders the graph and breakdown correctly.
+- The frontend works locally.
+- Automated tests pass.
+- GitHub Actions workflows are implemented.
+- The static website can be deployed to GitHub Pages.
+- The README explains setup and operation.
+
+Run the relevant checks and fix all issues you can reproduce.
+
+If network access, missing credentials, or GitHub permissions prevent any operation, complete everything else and document the exact remaining action. Do not claim tests or deployments succeeded unless verified.
+
+Do not publish a repository or modify an existing remote without the necessary authorization.
+
+At completion, report:
+
+1. A concise implementation summary.
+2. The resulting file tree.
+3. Commands executed and their results.
+4. Any unresolved technical limitations.
+5. Exact manual steps required to publish the repository.
+6. The expected website URL format.
+
+Prioritize delivering a genuinely functional, deployable project over producing a large amount of scaffolding.

@@ -20,6 +20,7 @@ const browser = spawn(
 );
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 let ws;
+const mismatch = process.argv.includes("--calendar-mismatch");
 try {
   let tab;
   for (let i = 0; i < 60; i++) {
@@ -78,7 +79,11 @@ try {
   assert.equal(state.rows, 24);
   assert.equal(state.chart, 3);
   assert.ok(state.cost.includes("€"));
-  assert.ok(/desactualizados|DEMOSTRACIÓN/.test(state.notice));
+  assert.ok(
+    mismatch
+      ? state.notice.includes("ESIOS publica")
+      : /desactualizados|DEMOSTRACIÓN/.test(state.notice),
+  );
   console.log("Desktop subpath render:", state);
   await evaluate(
     `document.querySelector('#detail').click(); document.querySelector('#consumption').value='2';document.querySelector('#consumption').dispatchEvent(new Event('input'));document.querySelector('#theme').click()`,
@@ -87,14 +92,39 @@ try {
     await evaluate(
       `Chart.getChart(document.querySelector('#chart')).data.datasets.length`,
     ),
-    4,
+    mismatch ? 3 : 4,
   );
+  if (mismatch) {
+    assert.equal(
+      await evaluate(`document.querySelector('#detail').disabled`),
+      true,
+    );
+    assert.equal(
+      await evaluate(
+        `document.querySelectorAll('#rows tr')[8].cells[1].textContent`,
+      ),
+      "Sin verificar",
+    );
+    assert.equal(
+      await evaluate(
+        `document.querySelectorAll('#rows tr')[8].cells[3].textContent`,
+      ),
+      "—",
+    );
+    assert.equal(
+      await evaluate(
+        `Chart.getChart(document.querySelector('#chart')).data.datasets[1].data[8]`,
+      ),
+      0.00329,
+    );
+  }
   await delay(600);
   const shot = await cdp("Page.captureScreenshot", {
     format: "png",
     captureBeyondViewport: true,
   });
-  await writeFile("docs/preview.png", Buffer.from(shot.data, "base64"));
+  if (!mismatch)
+    await writeFile("docs/preview.png", Buffer.from(shot.data, "base64"));
   await cdp("Emulation.setDeviceMetricsOverride", {
     width: 390,
     height: 844,

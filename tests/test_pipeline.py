@@ -4,6 +4,7 @@ import json
 import unittest
 from datetime import date, datetime
 from decimal import Decimal
+from pathlib import Path
 from unittest.mock import patch
 from urllib.error import HTTPError, URLError
 
@@ -54,6 +55,36 @@ class Prices(unittest.TestCase):
         for value in ["NaN", "Infinity", "1,2,3", "", True]:
             with self.assertRaises(ValueError):
                 number(value)
+
+    def test_recorded_calendar_disagreement(self):
+        payload = json.loads((Path(__file__).parent / "fixtures/esios-2026-11-02.json").read_text())
+        data = normalize(payload, date(2026, 11, 2))
+        self.assertEqual(len(data["hours"]), 24)
+        self.assertEqual(len(data["warnings"]), 1)
+        self.assertEqual(len(data["warnings"][0]["hours"]), 16)
+        normal, mismatch = data["hours"][7:9]
+        self.assertEqual(normal["period"], "valle")
+        self.assertIsNotNone(normal["peajes"])
+        self.assertEqual(mismatch["calendar_period"], "llano")
+        self.assertAlmostEqual(mismatch["calendar_regulated"], 0.029267)
+        for row in data["hours"][8:]:
+            self.assertIsNone(row["period"])
+            self.assertIsNone(row["peajes"])
+            self.assertIsNone(row["cargos"])
+            self.assertEqual(row["regulated"], row["source_regulated"])
+            self.assertAlmostEqual(row["remaining"] + row["regulated"], row["total"])
+        for raw, row in zip(payload["PVPC"], data["hours"], strict=True):
+            self.assertEqual(row["total"], float(number(raw["PCB"]) / 1000))
+
+    def test_calendar_disagreement_preserves_negative_prices(self):
+        day = date(2026, 11, 2)
+        payload = fixture(day, True)
+        payload["PVPC"][10]["TEUPCB"] = "3,29"
+        data = normalize(payload, day)
+        self.assertEqual(len(data["warnings"][0]["hours"]), 1)
+        self.assertEqual(data["hours"][10]["total"], -0.01234)
+        self.assertAlmostEqual(data["hours"][10]["remaining"], -0.01563)
+        self.assertEqual(normalize(fixture(day), day)["warnings"], [])
 
     def test_ordinal_autumn_hours(self):
         day = date(2026, 10, 25)
@@ -136,6 +167,13 @@ class Prices(unittest.TestCase):
                 )
         with self.assertRaises(api.Unavailable):
             api.fetch(date(2026, 11, 2), opener=lambda *a, **kw: io.BytesIO(b'{"PVPC": []}'))
+        with self.assertRaises(api.Unavailable):
+            api.fetch(
+                date(2026, 11, 3),
+                opener=lambda *a, **kw: io.BytesIO(
+                    b'{"message": "No values for specified archive"}'
+                ),
+            )
         with self.assertRaises(ValueError):
             api.fetch(date(2026, 11, 2), opener=lambda *a, **kw: io.BytesIO(b"broken"))
 
@@ -156,8 +194,6 @@ class Prices(unittest.TestCase):
             writer.assert_not_called()
 
     def test_synthetic_fixture(self):
-        from pathlib import Path
-
         path = Path(__file__).parent / "fixtures/2026-11-01.json"
         normalize(json.loads(path.read_text()), date(2026, 11, 1))
 

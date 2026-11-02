@@ -7,11 +7,26 @@ ESIOS archive 70, retrieved during development on 2026-11-02, reports `TEUPCB: "
 expect llano, 0.029267 EUR/kWh, rather than valle, 0.003292 EUR/kWh. The Monday
 following All Saints is not a non-substitutable fixed-date national tariff holiday.
 
-The live `just update` therefore fails validation and leaves previous data intact.
-This is an observed source/calendar disagreement, not a timeout. Do not alter the
-calendar or prices to make this date pass. Retry on a consistent publication; if
-persistent, investigate with ESIOS and the official annual calendar before changing
-rate or calendar configuration. Never deploy demonstration prices as genuine data.
+The original validator blocked the entire `just update` on this discrepancy.
+The pipeline now checks that the published aggregate matches a verified annual rate,
+then preserves the official PVPC total and aggregate instead of inventing a split.
+Affected hours have `period`, `peajes` and `cargos` set to `null`, and retain
+`calendar_period`, `calendar_regulated` and `source_regulated`. The daily `warnings`
+list records `regulated_calendar_mismatch` and the affected timestamps. Both CLI
+and dashboard display a warning; the detailed split control is disabled for that day.
+Unknown regulated amounts still abort the update. No holiday override is added.
+
+The national-calendar rule is documented in
+[Circular 3/2020, article 7.3](https://www.boe.es/buscar/act.php?id=BOE-A-2020-1066)
+and the substituted holiday in the
+[2026 official calendar](https://www.boe.es/buscar/doc.php?id=BOE-A-2025-21667).
+The source/calendar difference does not by itself establish its underlying cause.
+`tests/fixtures/esios-2026-11-02.json` records the official response and provenance
+for deterministic regression coverage.
+
+The 2026-11-03 request also returned HTTP 200 with
+`{"message": "No values for specified archive"}` before publication. This exact
+response is now recognized as unpublished tomorrow; arbitrary messages still fail.
 
 ## DST
 

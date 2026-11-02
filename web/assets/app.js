@@ -59,6 +59,7 @@ const shading = {
     if (!a) return;
     ctx.save();
     selected.hours.forEach((h, i) => {
+      if (!periods[h.period]) return;
       const step = (a.right - a.left) / selected.hours.length;
       ctx.fillStyle = periods[h.period] + "24";
       ctx.fillRect(
@@ -75,6 +76,11 @@ function render() {
   const hours = selected.hours,
     stats = statistics(hours),
     now = currentHour(hours);
+  const splitAvailable = hours.every(
+    (h) => Number.isFinite(h.peajes) && Number.isFinite(h.cargos),
+  );
+  $("detail").disabled = !splitAvailable;
+  if (!splitAvailable) $("detail").checked = false;
   $("dashboard").hidden = false;
   $("average").textContent = decimal(stats.average);
   $("minimum").textContent = decimal(stats.minimum.total);
@@ -101,9 +107,9 @@ function render() {
       if (h === now) tr.className = "current";
       [
         h.label,
-        h.period,
+        h.period ?? "Sin verificar",
         ...["total", "peajes", "cargos", "remaining"].map((k) =>
-          decimal(h[k], 6),
+          h[k] === null ? "—" : decimal(h[k], 6),
         ),
       ].forEach((value) => {
         const td = document.createElement("td");
@@ -254,6 +260,14 @@ function choose(index) {
     : day.date !== madridDate() && index === 0
       ? "Datos desactualizados. No son los precios de hoy. Consulta la fecha y la última actualización."
       : "";
+  if (
+    day.warnings?.some(
+      (warning) => warning.code === "regulated_calendar_mismatch",
+    )
+  ) {
+    $("notice").textContent +=
+      " ESIOS publica un componente regulado distinto del previsto por el calendario. En las horas afectadas se muestra el agregado oficial, sin asignar tramo ni separar peajes y cargos. El desglose detallado no está disponible para este día.";
+  }
   $("hour-a").replaceChildren();
   $("hour-b").replaceChildren();
   render();

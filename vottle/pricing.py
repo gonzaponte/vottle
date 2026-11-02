@@ -68,6 +68,7 @@ def normalize(payload, day):
         f"{i:02}-{i + 1:02}" for i in range(25)
     ]
     normalized = []
+    mismatched_hours = []
     for index, (row, instant) in enumerate(zip(rows, instants, strict=True)):
         if day != datetime.strptime(row["Dia"], "%d/%m/%Y").date():
             raise ValueError("Source date differs from requested date")
@@ -83,8 +84,17 @@ def normalize(payload, day):
         charges = number(rates["periods"][name]["cargos"])
         regulated = access + charges
         # Archive 70 rounds EUR/MWh to two decimals, i.e. 0.000005 EUR/kWh.
+        calendar_name, calendar_regulated = name, regulated
         if abs(published - regulated) > Decimal("0.000005"):
-            raise ValueError(f"Regulated term mismatch at {instant}: {published} vs {regulated}")
+            known_amounts = [
+                number(rate["peajes"]) + number(rate["cargos"])
+                for rate in rates["periods"].values()
+            ]
+            if not any(abs(published - amount) <= Decimal("0.000005") for amount in known_amounts):
+                raise ValueError(f"Unknown regulated term at {instant}: {published}")
+            # Preserve official aggregate prices without asserting an unverified split/calendar.
+            mismatched_hours.append(instant.isoformat())
+            name, access, charges, regulated = None, None, None, published
         normalized.append(
             {
                 "start": instant.isoformat(),
@@ -92,9 +102,11 @@ def normalize(payload, day):
                 "label": instant.strftime("%H:%M %Z"),
                 "source_hour": label,
                 "period": name,
+                "calendar_period": calendar_name,
+                "calendar_regulated": float(calendar_regulated),
                 "total": float(total),
-                "peajes": float(access),
-                "cargos": float(charges),
+                "peajes": float(access) if access is not None else None,
+                "cargos": float(charges) if charges is not None else None,
                 "regulated": float(regulated),
                 "remaining": float(total - regulated),
                 "source_regulated": float(published),
@@ -106,5 +118,10 @@ def normalize(payload, day):
         "unit": "EUR/kWh",
         "region": "Península (PCB)",
         "tariff_sources": rates["sources"],
+        "warnings": (
+            [{"code": "regulated_calendar_mismatch", "hours": mismatched_hours}]
+            if mismatched_hours
+            else []
+        ),
         "hours": normalized,
     }

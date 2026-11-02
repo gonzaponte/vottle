@@ -26,7 +26,7 @@ def fetch(day, opener=urlopen, sleep=time.sleep):
             if len(raw) > 2_000_000:
                 raise ValueError("ESIOS response exceeds size limit")
             payload = json.loads(raw)
-            if payload == {"PVPC": []}:
+            if payload in ({"PVPC": []}, {"message": "No values for specified archive"}):
                 raise Unavailable(str(day))
             return payload
         except HTTPError as exc:

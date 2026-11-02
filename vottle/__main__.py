@@ -36,6 +36,13 @@ def acquire(day, fixture_dir=None):
                 retrieved_at=datetime.now(timezone.utc).isoformat(),
                 demo=bool(fixture_dir),
             )
+            for warning in dataset["warnings"]:
+                print(
+                    f"vottle: warning: {target}: {warning['code']} in "
+                    f"{len(warning['hours'])} hours; preserving official totals and "
+                    "aggregate regulated prices; unverified split omitted",
+                    file=sys.stderr,
+                )
             datasets.append(dataset)
         except (Unavailable, FileNotFoundError):
             if offset == 0:

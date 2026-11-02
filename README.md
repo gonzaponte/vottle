@@ -124,8 +124,16 @@ En PR se comprueba una construcción de demostración, nunca se publica.
 
 Si falla hoy, hay datos incoherentes o se agotan los tres intentos HTTP de 20 segundos,
 el workflow falla **antes de subir el artefacto**: Pages conserva el despliegue anterior.
+Una discrepancia de calendario cuyo agregado publicado coincide con otro importe
+regulado vigente se publica con aviso: se conservan el PVPC y el agregado de ESIOS,
+pero se omiten el tramo y el desglose peajes/cargos de las horas afectadas. El control
+de desglose se desactiva para ese día. Un importe regulado desconocido sigue siendo
+un error. No se cambia el calendario ni se deducen componentes sin verificar.
+El JSON conserva `calendar_period`, `calendar_regulated` y un aviso
+`regulated_calendar_mismatch` con los instantes afectados; `period`, `peajes` y
+`cargos` son `null` en esas horas. La salida del CLI también muestra el aviso.
 La interfaz avisa si la fecha de esos datos ya no es hoy. Si mañana responde 404/422 o
-un archivo vacío se indica que aún no está publicado; otros errores abortan la actualización.
+un archivo vacío, o el mensaje explícito `No values for specified archive`, se indica que aún no está publicado; otros errores abortan la actualización.
 Una recuperación manual es volver a ejecutar el workflow. Los fallos aparecen en Actions;
 no hay servicio adicional de monitorización. GitHub puede retrasar o descartar ejecuciones
 y desactivar cron tras 60 días sin actividad en repositorios públicos: reactiva el workflow
@@ -172,7 +180,13 @@ values and regulated decomposition, then atomically writes a versioned JSON bund
 The static build copies it and frontend assets to `dist/`. Prices are converted from
 EUR/MWh to EUR/kWh using decimal arithmetic. Each available day includes the source URL,
 retrieval timestamp, validity date, timezone and tariff references. Tomorrow being
-unpublished is distinct from a failed or malformed request. No fabricated fallback is used.
+unpublished is distinct from a failed or malformed request, including ESIOS's explicit
+`No values for specified archive` message. No fabricated fallback is used.
+If the published regulated aggregate matches a verified rate but disagrees with the
+calendar, total and aggregate prices remain available with a visible warning. The
+unverified period and peajes/cargos split are `null` for affected hours, and the detailed
+view is disabled for that day. Expected calendar values and affected timestamps are
+retained for auditing. Unknown regulated amounts and malformed data still fail validation.
 
 **Deployment:** use the public [gonzaponte/vottle](https://github.com/gonzaponte/vottle)
 repository, push `main` (`git push -u origin main`), select GitHub Actions in

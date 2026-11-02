@@ -34,12 +34,14 @@ lint:
     nixfmt --check flake.nix nix/chartjs.nix
     actionlint
     node --check web/assets/app.js
+    prettier --check web tests/*.mjs scripts/*.mjs README.md VERIFICATION.md nix/README.md tests/fixtures/README.md config/tariffs.json .github/workflows/*.yml
 
 # Format Python and Nix sources.
 fmt:
     ruff check --fix vottle tests
     ruff format vottle tests
     nixfmt flake.nix nix/chartjs.nix
+    prettier --write web tests/*.mjs scripts/*.mjs README.md VERIFICATION.md nix/README.md tests/fixtures/README.md config/tariffs.json .github/workflows/*.yml
 
 # Run every quality check.
 check: lint test

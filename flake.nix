@@ -7,7 +7,6 @@
       systems = [
         "x86_64-linux"
         "aarch64-linux"
-        "x86_64-darwin"
         "aarch64-darwin"
       ];
       each = nixpkgs.lib.genAttrs systems;
@@ -27,6 +26,7 @@
               just
               git
               ruff
+              prettier
               nixfmt
               shfmt
               actionlint

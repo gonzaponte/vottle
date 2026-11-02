@@ -1,25 +1,199 @@
 <!doctype html>
 <html lang="es">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Precios horarios de la luz PVPC y desglose de peajes y cargos. Datos oficiales de Red Eléctrica.">
-<title>vottle · El precio de tu energía</title>
-<link rel="icon" href="assets/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="assets/style.css">
-<script defer src="assets/chart.umd.js"></script><script type="module" src="assets/app.js"></script>
-</head>
-<body>
-<header><a class="brand" href="./" aria-label="vottle, inicio"><span class="mark">ϟ</span> vottle<span class="brand-dot">.</span></a><span class="header-note">ENERGÍA, CON CLARIDAD</span><button id="theme" aria-label="Cambiar tema">◐ <span>Tema</span></button></header>
-<main>
-<section class="intro"><div><p class="eyebrow">VISOR DE LA LUZ · PENÍNSULA</p><h1>Tu energía.<br><span>En el mejor momento.</span></h1><p class="subtitle">El precio de la luz por horas, con cada componente a la vista.</p></div><div class="source-badge"><span></span> Datos oficiales · Red Eléctrica</div></section>
-<section class="toolbar" aria-label="Seleccionar día"><div class="tabs"><button id="today" class="active">Hoy</button><button id="tomorrow">Mañana</button></div><div><h2 id="date">Precios horarios</h2><span class="muted">PVPC · 2.0TD · sin impuestos</span></div><label class="unit">Unidad <select id="unit"><option value="1">€/kWh</option><option value="100">cént./kWh</option></select></label></section>
-<div id="notice" role="status">Cargando los precios oficiales…</div>
-<div id="dashboard" hidden>
-<section class="stats" aria-label="Resumen diario"><article><p>Precio medio</p><strong id="average"></strong><span>€/kWh · media del día</span></article><article><p><i class="dot green"></i> Hora más barata</p><strong id="minimum"></strong><span id="cheapest"></span></article><article><p><i class="dot amber"></i> Hora más cara</p><strong id="maximum"></strong><span id="expensive"></span></article><article><p>Ahora</p><strong id="current"></strong><span id="current-label"></span></article></section>
-<section class="panel chart-panel"><div class="panel-heading"><div><h2>Así se mueve el precio</h2><p>Compara las horas. Pulsa una serie para mostrarla u ocultarla.</p></div><label class="detail"><input type="checkbox" id="detail"> Desglosar peajes y cargos</label></div><div class="chart-wrap"><canvas id="chart" role="img" aria-label="Evolución horaria del PVPC y sus componentes. Tabla accesible disponible debajo."></canvas></div><div class="chart-footer"><span><i class="dot punta"></i> Punta</span><span><i class="dot llano"></i> Llano</span><span><i class="dot valle"></i> Valle</span><span class="muted">Hora peninsular · Europe/Madrid</span></div><p class="inclusion">Los peajes y cargos <strong>ya están incluidos</strong> en el PVPC. No se suman de nuevo.</p></section>
-<section class="lower-grid"><article class="panel calculator"><p class="eyebrow">PLANIFICA TU CONSUMO</p><h2>La misma energía, a otra hora.</h2><p>Compara cuánto cuesta consumir la misma cantidad en dos horas del día.</p><label for="consumption">Consumo previsto <span>kWh</span></label><input id="consumption" type="number" min="0" max="1000000" step="0.1" value="1"><div class="compare"><label>Primera hora<select id="hour-a"></select><output id="cost-a"></output></label><label>Segunda hora<select id="hour-b"></select><output id="cost-b"></output></label></div><p id="saving" aria-live="polite"></p><small>Estimación del consumo variable, sin impuestos. No incluye potencia contratada, alquiler del contador ni otros conceptos de la factura.</small></article><article class="panel explanation"><p class="eyebrow">ENTIENDE TU TARIFA</p><h2>Un precio, varias piezas.</h2><dl><dt>PVPC total</dt><dd>Precio regulado de la energía para contratos PVPC. Tu contrato de mercado libre puede tener otros precios.</dd><dt>Peajes + cargos</dt><dd>Retribuyen las redes y financian costes del sistema. Cambian según el tramo horario; no son el término fijo de potencia.</dd><dt>Resto del PVPC</dt><dd>Incluye energía, ajustes y otros componentes. Puede variar incluso cuando el tramo regulado es el mismo, también los fines de semana.</dd></dl></article></section>
-<details class="panel table-panel"><summary>Consultar todos los precios y su desglose</summary><div class="table-scroll"><table><caption>Precios en €/kWh, sin impuestos</caption><thead><tr><th>Hora</th><th>Tramo</th><th>PVPC</th><th>Peajes</th><th>Cargos</th><th>Resto</th></tr></thead><tbody id="rows"></tbody></table></div></details>
-<p id="provenance" class="provenance"></p>
-</div>
-<noscript>Activa JavaScript para consultar el gráfico y la calculadora. Los datos están disponibles en <a href="data/prices.json">JSON</a>.</noscript>
-</main><footer><a class="brand" href="./">vottle.</a><p>Visor Online de Tarifas y Tramos de la Luz en España</p><a href="https://www.esios.ree.es/es/pvpc" target="_blank" rel="noopener">Fuente: ESIOS ↗</a><a href="https://www.miteco.gob.es/es/energia/energia-electrica/electricidad/peajes.html">Peajes y cargos ↗</a></footer>
-</body></html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      name="description"
+      content="Precios horarios de la luz PVPC y desglose de peajes y cargos. Datos oficiales de Red Eléctrica."
+    />
+    <title>vottle · El precio de tu energía</title>
+    <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="assets/style.css" />
+    <script defer src="assets/chart.umd.js"></script>
+    <script type="module" src="assets/app.js"></script>
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="./" aria-label="vottle, inicio"
+        ><span class="mark">ϟ</span> vottle<span class="brand-dot">.</span></a
+      ><span class="header-note">ENERGÍA, CON CLARIDAD</span
+      ><button id="theme" aria-label="Cambiar tema">◐ <span>Tema</span></button>
+    </header>
+    <main>
+      <section class="intro">
+        <div>
+          <p class="eyebrow">VISOR DE LA LUZ · PENÍNSULA</p>
+          <h1>Tu energía.<br /><span>En el mejor momento.</span></h1>
+          <p class="subtitle">
+            El precio de la luz por horas, con cada componente a la vista.
+          </p>
+        </div>
+        <div class="source-badge">
+          <span></span> Datos oficiales · Red Eléctrica
+        </div>
+      </section>
+      <section class="toolbar" aria-label="Seleccionar día">
+        <div class="tabs">
+          <button id="today" class="active">Hoy</button
+          ><button id="tomorrow">Mañana</button>
+        </div>
+        <div>
+          <h2 id="date">Precios horarios</h2>
+          <span class="muted">PVPC · 2.0TD · sin impuestos</span>
+        </div>
+        <label class="unit"
+          >Unidad
+          <select id="unit">
+            <option value="1">€/kWh</option>
+            <option value="100">cént./kWh</option>
+          </select></label
+        >
+      </section>
+      <div id="notice" role="status">Cargando los precios oficiales…</div>
+      <div id="dashboard" hidden>
+        <section class="stats" aria-label="Resumen diario">
+          <article>
+            <p>Precio medio</p>
+            <strong id="average"></strong><span>€/kWh · media del día</span>
+          </article>
+          <article>
+            <p><i class="dot green"></i> Hora más barata</p>
+            <strong id="minimum"></strong><span id="cheapest"></span>
+          </article>
+          <article>
+            <p><i class="dot amber"></i> Hora más cara</p>
+            <strong id="maximum"></strong><span id="expensive"></span>
+          </article>
+          <article>
+            <p>Ahora</p>
+            <strong id="current"></strong><span id="current-label"></span>
+          </article>
+        </section>
+        <section class="panel chart-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Así se mueve el precio</h2>
+              <p>
+                Compara las horas. Pulsa una serie para mostrarla u ocultarla.
+              </p>
+            </div>
+            <label class="detail"
+              ><input type="checkbox" id="detail" /> Desglosar peajes y
+              cargos</label
+            >
+          </div>
+          <div class="chart-wrap">
+            <canvas
+              id="chart"
+              role="img"
+              aria-label="Evolución horaria del PVPC y sus componentes. Tabla accesible disponible debajo."
+            ></canvas>
+          </div>
+          <div class="chart-footer">
+            <span><i class="dot punta"></i> Punta</span
+            ><span><i class="dot llano"></i> Llano</span
+            ><span><i class="dot valle"></i> Valle</span
+            ><span class="muted">Hora peninsular · Europe/Madrid</span>
+          </div>
+          <p class="inclusion">
+            Los peajes y cargos <strong>ya están incluidos</strong> en el PVPC.
+            No se suman de nuevo.
+          </p>
+        </section>
+        <section class="lower-grid">
+          <article class="panel calculator">
+            <p class="eyebrow">PLANIFICA TU CONSUMO</p>
+            <h2>La misma energía, a otra hora.</h2>
+            <p>
+              Compara cuánto cuesta consumir la misma cantidad en dos horas del
+              día.
+            </p>
+            <label for="consumption">Consumo previsto <span>kWh</span></label
+            ><input
+              id="consumption"
+              type="number"
+              min="0"
+              max="1000000"
+              step="0.1"
+              value="1"
+            />
+            <div class="compare">
+              <label
+                >Primera hora<select id="hour-a"></select
+                ><output id="cost-a"></output></label
+              ><label
+                >Segunda hora<select id="hour-b"></select
+                ><output id="cost-b"></output
+              ></label>
+            </div>
+            <p id="saving" aria-live="polite"></p>
+            <small
+              >Estimación del consumo variable, sin impuestos. No incluye
+              potencia contratada, alquiler del contador ni otros conceptos de
+              la factura.</small
+            >
+          </article>
+          <article class="panel explanation">
+            <p class="eyebrow">ENTIENDE TU TARIFA</p>
+            <h2>Un precio, varias piezas.</h2>
+            <dl>
+              <dt>PVPC total</dt>
+              <dd>
+                Precio regulado de la energía para contratos PVPC. Tu contrato
+                de mercado libre puede tener otros precios.
+              </dd>
+              <dt>Peajes + cargos</dt>
+              <dd>
+                Retribuyen las redes y financian costes del sistema. Cambian
+                según el tramo horario; no son el término fijo de potencia.
+              </dd>
+              <dt>Resto del PVPC</dt>
+              <dd>
+                Incluye energía, ajustes y otros componentes. Puede variar
+                incluso cuando el tramo regulado es el mismo, también los fines
+                de semana.
+              </dd>
+            </dl>
+          </article>
+        </section>
+        <details class="panel table-panel">
+          <summary>Consultar todos los precios y su desglose</summary>
+          <div class="table-scroll">
+            <table>
+              <caption>
+                Precios en €/kWh, sin impuestos
+              </caption>
+              <thead>
+                <tr>
+                  <th>Hora</th>
+                  <th>Tramo</th>
+                  <th>PVPC</th>
+                  <th>Peajes</th>
+                  <th>Cargos</th>
+                  <th>Resto</th>
+                </tr>
+              </thead>
+              <tbody id="rows"></tbody>
+            </table>
+          </div>
+        </details>
+        <p id="provenance" class="provenance"></p>
+      </div>
+      <noscript
+        >Activa JavaScript para consultar el gráfico y la calculadora. Los datos
+        están disponibles en <a href="data/prices.json">JSON</a>.</noscript
+      >
+    </main>
+    <footer>
+      <a class="brand" href="./">vottle.</a>
+      <p>Visor Online de Tarifas y Tramos de la Luz en España</p>
+      <a href="https://www.esios.ree.es/es/pvpc" target="_blank" rel="noopener"
+        >Fuente: ESIOS ↗</a
+      ><a
+        href="https://www.miteco.gob.es/es/energia/energia-electrica/electricidad/peajes.html"
+        >Peajes y cargos ↗</a
+      >
+    </footer>
+  </body>
+</html>

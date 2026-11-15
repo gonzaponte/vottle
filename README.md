@@ -104,8 +104,12 @@ publicación: mostramos su fecha de validez y la hora de recuperación, sin inve
 ## Actualización y GitHub Pages
 
 La ejecución automática valida, descarga, construye y publica con las acciones oficiales
-de Pages. Se ejecuta al cambiar `main`, manualmente y a las **21:30 Europe/Madrid**
-(con `timezone` de GitHub Actions, incluido el cambio de hora). No hay Python en el navegador
+de Pages. Se ejecuta al cambiar `main`, manualmente y cada día a las
+**20:45, 21:30 y 22:30 Europe/Madrid** (con `timezone` de GitHub Actions, incluido
+el cambio de hora). Cada ejecución vuelve a consultar ESIOS: si los precios de mañana
+faltan en el primer intento, los siguientes pueden recogerlos. Estas ejecuciones
+reducen la dependencia de una sola actualización, aunque GitHub puede retrasarlas.
+No hay Python en el navegador
 ni llamadas desde el navegador a ESIOS. Todos los recursos usan rutas relativas.
 
 Para publicar (acción inicial del propietario):
@@ -191,9 +195,12 @@ retained for auditing. Unknown regulated amounts and malformed data still fail v
 **Deployment:** use the public [gonzaponte/vottle](https://github.com/gonzaponte/vottle)
 repository, push `main` (`git push -u origin main`), select GitHub Actions in
 Settings → Pages, and run the Publish dashboard workflow. The expected URL is
-[gonzaponte.github.io/vottle](https://gonzaponte.github.io/vottle/). Pushes, manual dispatch and a timezone-aware
-21:30 Madrid schedule run checks, fetch official prices and deploy using official Pages
-actions. No PAT or generated-data commits are needed. Failed acquisition leaves the prior
+[gonzaponte.github.io/vottle](https://gonzaponte.github.io/vottle/). Pushes, manual dispatch
+and daily schedules at **20:45, 21:30 and 22:30 Europe/Madrid** run checks, fetch official
+prices and deploy using official Pages actions. The timezone handles daylight saving time.
+Each run checks ESIOS again, so later attempts can pick up tomorrow's prices if they
+were missing earlier. Multiple attempts reduce reliance on a single update, but GitHub
+can still delay them. No PAT or generated-data commits are needed. Failed acquisition leaves the prior
 site deployed; stale dates are visibly flagged. Retry manually in Actions after an outage.
 GitHub can delay scheduled jobs or disable them after 60 days of public-repository inactivity.
 

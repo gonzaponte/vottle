@@ -6,7 +6,7 @@ default:
 dev:
     python -m vottle dev
 
-# Download and validate today, tomorrow and seven days of history.
+# Download current prices, hourly history and up to 90 daily summaries.
 fetch:
     python -m vottle fetch
 
@@ -48,4 +48,4 @@ check: lint test
 
 # Remove generated website, downloaded data and caches.
 clean:
-    python -c 'import shutil; [shutil.rmtree(p, ignore_errors=True) for p in ["dist", "data", ".ruff_cache", "vottle/__pycache__", "tests/__pycache__"]]'
+    python -c 'import shutil; [shutil.rmtree(p, ignore_errors=True) for p in ["dist", "data", ".cache", ".ruff_cache", "vottle/__pycache__", "tests/__pycache__"]]'

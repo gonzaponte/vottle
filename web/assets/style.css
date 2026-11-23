@@ -484,3 +484,35 @@ footer > a:not(.brand) {
 .history-control {
   margin-top: 18px;
 }
+
+.view-tabs {
+  width: fit-content;
+  margin-bottom: 16px;
+}
+.trend-toolbar {
+  flex-wrap: wrap;
+}
+.trend-toolbar label {
+  font-size: 12px;
+}
+.trend-toolbar input {
+  width: 65px;
+  padding: 7px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+}
+.trend-shortcuts {
+  display: flex;
+  gap: 6px;
+}
+.trend-shortcuts button {
+  padding: 7px 10px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+}
+#trend-status {
+  color: var(--muted);
+  font-size: 12px;
+}

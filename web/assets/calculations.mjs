@@ -90,3 +90,17 @@ export function sharedBounds(bundle) {
   const padding = Math.max((max - min) * 0.05, 0.001);
   return { min: min - padding, max: max + padding };
 }
+
+export function trendWindow(bundle, count, today = madridDate()) {
+  if (!Number.isInteger(count) || count < 1 || count > 90)
+    throw new Error("Choose 1–90 days");
+  const end = bundle.days[0]?.demo ? bundle.days[0].date : today;
+  const byDate = new Map((bundle.trends ?? []).map((row) => [row.date, row]));
+  return Array.from({ length: count }, (_, index) => {
+    const date = shiftDate(end, index - count + 1),
+      row = byDate.get(date);
+    return row?.status === "available" && row.demo === bundle.days[0]?.demo
+      ? row
+      : { date, status: "unavailable" };
+  });
+}

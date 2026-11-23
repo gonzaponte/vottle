@@ -1,3 +1,4 @@
+import { initializeViews } from "./trends.mjs";
 import {
   statistics,
   cost,
@@ -18,13 +19,14 @@ const money = (n) =>
     currency: "EUR",
     minimumFractionDigits: 4,
   });
-let bundle, selected, chart;
+let bundle, selected, chart, trendsView;
 const media = matchMedia("(prefers-color-scheme: dark)");
 let override = false;
 function theme(dark) {
   document.body.classList.toggle("dark", dark);
   document.body.classList.toggle("light", !dark);
   if (selected) render();
+  trendsView?.render();
 }
 theme(media.matches);
 media.addEventListener("change", (e) => {
@@ -359,6 +361,7 @@ $("history-range").onchange = () => {
 };
 $("unit").onchange = () => {
   if (selected) render();
+  trendsView?.render();
 };
 for (const id of ["consumption", "hour-a", "hour-b"])
   $(id).addEventListener("input", () => {
@@ -378,6 +381,9 @@ try {
   )
     throw new Error("Formato no compatible");
   choose(0);
+  trendsView = initializeViews(bundle, () => {
+    if (selected) render();
+  });
 } catch (error) {
   $("notice").textContent =
     `No se pudieron cargar los precios. Inténtalo más tarde. (${error.message})`;

@@ -108,3 +108,34 @@ test("DST repetitions share extrema without counting a day twice; missing spring
   assert.equal(shiftDate("2027-01-01", -7), "2026-12-25");
   assert.equal(shiftDate("2026-03-30", -1), "2026-03-29");
 });
+
+test("trends use calendar windows, exclude tomorrow, and preserve missing dates", async () => {
+  const { trendWindow } = await import("../web/assets/calculations.mjs");
+  const bundle = {
+    days: [{ date: "2026-11-01", demo: true }],
+    trends: [
+      {
+        date: "2026-10-31",
+        status: "available",
+        min: -0.1,
+        mean: 0,
+        max: 0.1,
+        demo: true,
+      },
+      { date: "2026-11-02", status: "available", demo: true },
+    ],
+  };
+  const rows = trendWindow(bundle, 3);
+  assert.deepEqual(
+    rows.map((r) => r.date),
+    ["2026-10-30", "2026-10-31", "2026-11-01"],
+  );
+  assert.equal(rows[0].status, "unavailable");
+  assert.equal(rows[1].min, -0.1);
+  assert.equal(
+    trendWindow({ ...bundle, trends: undefined }, 1)[0].status,
+    "unavailable",
+  );
+  for (const n of [0, 91, 1.5, NaN])
+    assert.throws(() => trendWindow(bundle, n));
+});

@@ -124,6 +124,31 @@ El gráfico repite ese rango en ambas ocurrencias. Los días de primavera sin es
 hora no aportan muestras a ese tramo. Los colores de fondo siguen indicando los
 periodos regulados; la banda gris es una referencia del precio total.
 
+## Tendencias diarias
+
+La pestaña **Tendencias** muestra el mínimo, la media y el máximo del PVPC total
+por día. Permite consultar entre 1 y 90 días naturales, con 30 por defecto y accesos
+para 7, 30 y 90 días. Incluye hoy (todas sus horas publicadas) y excluye mañana.
+La media es aritmética, sin ponderar por consumo, y usa los 23, 24 o 25 intervalos
+válidos. Los días incompletos se muestran como huecos, sin interpolación. La tabla
+incluye la fuente y la hora de consulta; tema y unidad se comparten entre pestañas.
+
+El JSON añade `trends`: un registro por fecha con `min`, `mean`, `max`, `intervals`,
+fuente y consulta para datos disponibles, o `status: unavailable` para huecos.
+Estos totales históricos se validan sin depender de las tarifas anuales de peajes.
+`.cache/trends.json` es una caché desechable de resúmenes, restaurada y guardada por
+GitHub Actions; no es una base de datos ni se guarda en Git. Cada actualización
+reutiliza las descargas horarias y revisa la última semana; para fechas antiguas
+reutiliza resúmenes validados. Si falla una revisión, conserva la fecha original de
+consulta del dato anterior. Un caché corrupto se descarta.
+
+En una ejecución sin caché se descargan primero las fechas más recientes; después
+de dos minutos no se empiezan nuevas peticiones de relleno. Las siguientes ejecuciones
+pueden continuar. El hueco histórico no bloquea la publicación de precios actuales.
+Los fixtures de demostración nunca leen ni escriben la caché real.
+
+![Tendencias con datos sintéticos de demostración](docs/trends.png)
+
 ## Actualización y GitHub Pages
 
 La ejecución automática valida, descarga, construye y publica con las acciones oficiales
@@ -265,3 +290,19 @@ Historical failures reduce coverage rather than block valid current prices. Miss
 hours leave gaps, and the UI explicitly labels partial or unavailable history.
 Repeated autumn hours share extrema but count once per day; absent spring hours
 contribute no observations. Missing annual rates are never replaced with another year's.
+
+### Daily trends
+
+The Trends tab shows daily minimum, arithmetic mean and maximum total PVPC for
+1–90 calendar days (30 by default), including today's published schedule and excluding
+tomorrow. Missing or incomplete days remain gaps. All 23/24/25 valid hourly intervals
+contribute equally. An accessible table includes source URLs and retrieval timestamps;
+theme and price unit are shared with the hourly view.
+
+The additive `trends` JSON collection contains daily summaries or unavailable-date
+markers. Historical total-price validation is independent of annual regulated rates.
+A disposable versioned `.cache/trends.json` file is restored/saved through Actions.
+Recent days are refreshed, older validated summaries reused, and cached fallbacks
+retain their original timestamps. A cold-cache backfill works newest-first and stops
+starting requests after two minutes, allowing later runs to continue. No database or
+generated-data commits are needed. Demo fixtures never access the production cache.

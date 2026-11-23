@@ -193,6 +193,69 @@ try {
   });
   if (!mismatch)
     await writeFile("docs/preview.png", Buffer.from(shot.data, "base64"));
+  await evaluate(
+    `document.querySelector('#hourly-tab').dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}))`,
+  );
+  assert.equal(await evaluate(`document.activeElement.id`), "trends-tab");
+  assert.equal(
+    await evaluate(`document.querySelector('#trends-panel').hidden`),
+    false,
+  );
+  assert.equal(
+    await evaluate(
+      `Chart.getChart(document.querySelector('#trend-chart')).data.labels.length`,
+    ),
+    30,
+  );
+  assert.equal(
+    await evaluate(`document.querySelectorAll('#trend-rows tr').length`),
+    30,
+  );
+  await evaluate(`document.querySelector('[data-trend-days="90"]').click()`);
+  assert.equal(
+    await evaluate(
+      `Chart.getChart(document.querySelector('#trend-chart')).data.labels.length`,
+    ),
+    90,
+  );
+  assert.ok(
+    await evaluate(
+      `document.querySelector('#trend-status').textContent.includes('90 de 90')`,
+    ),
+  );
+  const mean = await evaluate(
+    `Chart.getChart(document.querySelector('#trend-chart')).data.datasets[2].data[0]`,
+  );
+  await evaluate(
+    `document.querySelector('#trend-unit').value='100';document.querySelector('#trend-unit').dispatchEvent(new Event('change'))`,
+  );
+  assert.ok(
+    Math.abs(
+      (await evaluate(
+        `Chart.getChart(document.querySelector('#trend-chart')).data.datasets[2].data[0]`,
+      )) -
+        mean * 100,
+    ) < 1e-9,
+  );
+  assert.equal(await evaluate(`document.querySelector('#unit').value`), "100");
+  await evaluate(
+    `document.querySelector('#trend-unit').value='1';document.querySelector('#trend-unit').dispatchEvent(new Event('change'));document.querySelector('[data-trend-days="30"]').click()`,
+  );
+  await delay(500);
+  const trendShot = await cdp("Page.captureScreenshot", {
+    format: "png",
+    captureBeyondViewport: true,
+  });
+  if (!mismatch)
+    await writeFile("docs/trends.png", Buffer.from(trendShot.data, "base64"));
+  await evaluate(
+    `document.querySelector('#trends-tab').dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true}))`,
+  );
+  assert.equal(await evaluate(`document.activeElement.id`), "hourly-tab");
+  assert.equal(
+    await evaluate(`document.querySelector('#consumption').value`),
+    "2",
+  );
   await cdp("Emulation.setDeviceMetricsOverride", {
     width: 390,
     height: 844,
@@ -204,6 +267,44 @@ try {
     await evaluate(`document.documentElement.scrollWidth<=window.innerWidth`),
     "No mobile page overflow",
   );
+  if (!mismatch) {
+    await evaluate(`document.querySelector('#trends-tab').click()`);
+    assert.ok(
+      await evaluate(`document.documentElement.scrollWidth<=window.innerWidth`),
+      "Trends fits mobile width",
+    );
+    assert.ok(
+      await evaluate(
+        `Chart.getChart(document.querySelector('#trend-chart')).width>0`,
+      ),
+    );
+    await evaluate(
+      `document.querySelector('#trend-count').value='1';document.querySelector('#trend-count').dispatchEvent(new Event('input'))`,
+    );
+    assert.equal(
+      await evaluate(
+        `Chart.getChart(document.querySelector('#trend-chart')).data.labels.length`,
+      ),
+      1,
+    );
+    await evaluate(
+      `document.querySelector('#trend-count').value='0';document.querySelector('#trend-count').dispatchEvent(new Event('input'))`,
+    );
+    assert.equal(
+      await evaluate(`document.querySelector('#trend-count').checkValidity()`),
+      false,
+    );
+    await evaluate(
+      `document.querySelector('[data-trend-days="7"]').click();document.querySelector('#theme').click()`,
+    );
+    assert.equal(
+      await evaluate(
+        `Chart.getChart(document.querySelector('#trend-chart')).data.labels.length`,
+      ),
+      7,
+    );
+    await evaluate(`document.querySelector('#hourly-tab').click()`);
+  }
   await evaluate(`document.querySelector('#tomorrow').click()`);
   assert.ok(
     await evaluate(
@@ -262,7 +363,22 @@ try {
         `document.querySelector('#history-status').textContent.includes('2/7 días (referencia incompleta)')`,
       ),
     );
-    await inject(`delete data.history;`);
+    await inject(`data.trends.at(-2).status='unavailable';`);
+    await evaluate(`document.querySelector('#trends-tab').click()`);
+    assert.equal(
+      await evaluate(
+        `Chart.getChart(document.querySelector('#trend-chart')).data.datasets[2].data.at(-2)`,
+      ),
+      null,
+    );
+    assert.equal(
+      await evaluate(
+        `Chart.getChart(document.querySelector('#trend-chart')).data.datasets[2].spanGaps`,
+      ),
+      false,
+    );
+    await evaluate(`document.querySelector('#hourly-tab').click()`);
+    await inject(`delete data.history; delete data.trends;`);
     assert.equal(
       await evaluate(`document.querySelector('#history-range').disabled`),
       true,
@@ -270,6 +386,14 @@ try {
     assert.ok(
       await evaluate(
         `document.querySelector('#history-status').textContent.includes('Referencia histórica no disponible')`,
+      ),
+    );
+  }
+  if (!mismatch) {
+    await evaluate(`document.querySelector('#trends-tab').click()`);
+    assert.ok(
+      await evaluate(
+        `document.querySelector('#trend-status').textContent.includes('Datos de tendencias no disponibles')`,
       ),
     );
   }

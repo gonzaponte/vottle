@@ -65,6 +65,7 @@ try {
     if (r.exceptionDetails) throw new Error(JSON.stringify(r.exceptionDetails));
     return r.result.value;
   };
+  await cdp("Page.enable");
   await cdp("Emulation.setDeviceMetricsOverride", {
     width: 1440,
     height: 1550,
@@ -98,6 +99,59 @@ try {
       ? state.notice.includes("ESIOS publica")
       : /desactualizados|DEMOSTRACIÓN/.test(state.notice),
   );
+  if (!mismatch) {
+    const band = await evaluate(
+      `Chart.getChart(document.querySelector('#chart')).options.plugins.historyRange.ranges.map(range => range ? {min:range.min,max:range.max,days:range.days} : null)`,
+    );
+    assert.equal(band.length, 24);
+    assert.ok(band.every((range) => range && range.days === 7));
+    assert.ok(
+      await evaluate(
+        `document.querySelector('#history-status').textContent.includes('7/7 días')`,
+      ),
+    );
+    const bounds = await evaluate(
+      `({min:Chart.getChart(document.querySelector('#chart')).options.scales.y.min,max:Chart.getChart(document.querySelector('#chart')).options.scales.y.max})`,
+    );
+    await evaluate(`document.querySelector('#history-range').click()`);
+    assert.equal(
+      await evaluate(
+        `Chart.getChart(document.querySelector('#chart')).options.plugins.historyRange.enabled`,
+      ),
+      false,
+    );
+    assert.deepEqual(
+      await evaluate(
+        `({min:Chart.getChart(document.querySelector('#chart')).options.scales.y.min,max:Chart.getChart(document.querySelector('#chart')).options.scales.y.max})`,
+      ),
+      bounds,
+    );
+    await evaluate(
+      `document.querySelector('#history-range').click();document.querySelector('#unit').value='100';document.querySelector('#unit').dispatchEvent(new Event('change'))`,
+    );
+    assert.ok(
+      Math.abs(
+        (await evaluate(
+          `Chart.getChart(document.querySelector('#chart')).options.scales.y.max`,
+        )) -
+          bounds.max * 100,
+      ) < 1e-10,
+    );
+    assert.equal(
+      await evaluate(
+        `Chart.getChart(document.querySelector('#chart')).options.plugins.historyRange.factor`,
+      ),
+      100,
+    );
+    const tooltip = await evaluate(
+      `Chart.getChart(document.querySelector('#chart')).options.plugins.tooltip.callbacks.afterBody([{dataIndex:12}])`,
+    );
+    assert.ok(tooltip[0].includes("cént./kWh"));
+    assert.ok(tooltip[1].includes("7/7 días"));
+    await evaluate(
+      `document.querySelector('#unit').value='1';document.querySelector('#unit').dispatchEvent(new Event('change'))`,
+    );
+  }
   console.log("Desktop subpath render:", state);
   await evaluate(
     `document.querySelector('#detail').click(); document.querySelector('#consumption').value='2';document.querySelector('#consumption').dispatchEvent(new Event('input'));document.querySelector('#theme').click()`,
@@ -160,8 +214,67 @@ try {
     await evaluate(`document.querySelector('#dashboard').hidden`),
     true,
   );
+  if (!mismatch) {
+    const inject = async (transform) => {
+      const { identifier } = await cdp(
+        "Page.addScriptToEvaluateOnNewDocument",
+        {
+          source: `
+        const originalFetch = window.fetch;
+        window.fetch = async (...args) => {
+          const response = await originalFetch(...args);
+          if (!String(args[0]).includes('prices.json')) return response;
+          const data = await response.json();
+          ${transform}
+          return new Response(JSON.stringify(data), {status:200, headers:{'Content-Type':'application/json'}});
+        };`,
+        },
+      );
+      await cdp("Page.reload", { ignoreCache: true });
+      await delay(1200);
+      await cdp("Page.removeScriptToEvaluateOnNewDocument", { identifier });
+    };
+    await inject(
+      `const tomorrow = structuredClone(data.days[0]);tomorrow.date=data.days[1].date;tomorrow.hours.forEach(hour=>hour.total+=0.5);data.days[1]=tomorrow;`,
+    );
+    const initial = await evaluate(
+      `({min:Chart.getChart(document.querySelector('#chart')).options.scales.y.min,max:Chart.getChart(document.querySelector('#chart')).options.scales.y.max})`,
+    );
+    await evaluate(`document.querySelector('#tomorrow').click()`);
+    assert.equal(
+      await evaluate(`document.querySelector('#dashboard').hidden`),
+      false,
+    );
+    assert.deepEqual(
+      await evaluate(
+        `({min:Chart.getChart(document.querySelector('#chart')).options.scales.y.min,max:Chart.getChart(document.querySelector('#chart')).options.scales.y.max})`,
+      ),
+      initial,
+    );
+    assert.ok(
+      await evaluate(
+        `document.querySelector('#history-status').textContent.includes('7/7 días')`,
+      ),
+    );
+    await inject(`data.history = data.history.slice(0,2);`);
+    assert.ok(
+      await evaluate(
+        `document.querySelector('#history-status').textContent.includes('2/7 días (referencia incompleta)')`,
+      ),
+    );
+    await inject(`delete data.history;`);
+    assert.equal(
+      await evaluate(`document.querySelector('#history-range').disabled`),
+      true,
+    );
+    assert.ok(
+      await evaluate(
+        `document.querySelector('#history-status').textContent.includes('Referencia histórica no disponible')`,
+      ),
+    );
+  }
   console.log(
-    "PASS: detail, calculator, theme, mobile width and unavailable tomorrow controls",
+    "PASS: chart controls, mobile layout, historical coverage, tooltips and shared day scale",
   );
 } finally {
   ws?.close();

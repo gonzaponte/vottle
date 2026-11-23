@@ -9,7 +9,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from .api import Unavailable, fetch, source_url
-from .pricing import MADRID, ROOT, normalize
+from .pricing import MADRID, ROOT, normalize, tariff
 
 
 def write_json(path, value):
@@ -20,43 +20,59 @@ def write_json(path, value):
 
 
 def acquire(day, fixture_dir=None):
+    def download(target):
+        payload = (
+            json.loads((fixture_dir / f"{target}.json").read_text())
+            if fixture_dir
+            else fetch(target)
+        )
+        dataset = normalize(payload, target)
+        dataset.update(
+            status="available",
+            source_url=source_url(target),
+            retrieved_at=datetime.now(timezone.utc).isoformat(),
+            demo=bool(fixture_dir),
+        )
+        for warning in dataset["warnings"]:
+            print(
+                f"vottle: warning: {target}: {warning['code']} in "
+                f"{len(warning['hours'])} hours; preserving official totals and "
+                "aggregate regulated prices; unverified split omitted",
+                file=sys.stderr,
+            )
+        return dataset
+
     datasets = []
     for offset in (0, 1):
         target = day + timedelta(days=offset)
         try:
-            payload = (
-                json.loads((fixture_dir / f"{target}.json").read_text())
-                if fixture_dir
-                else fetch(target)
-            )
-            dataset = normalize(payload, target)
-            dataset.update(
-                status="available",
-                source_url=source_url(target),
-                retrieved_at=datetime.now(timezone.utc).isoformat(),
-                demo=bool(fixture_dir),
-            )
-            for warning in dataset["warnings"]:
-                print(
-                    f"vottle: warning: {target}: {warning['code']} in "
-                    f"{len(warning['hours'])} hours; preserving official totals and "
-                    "aggregate regulated prices; unverified split omitted",
-                    file=sys.stderr,
-                )
-            datasets.append(dataset)
+            datasets.append(download(target))
         except (Unavailable, FileNotFoundError):
             if offset == 0:
                 raise ValueError(f"Today's official data is unavailable: {target}") from None
             datasets.append(
                 {"date": str(target), "status": "not_published", "demo": bool(fixture_dir)}
             )
-    # One atomic bundle prevents partial updates after any failed validation.
+    history, missing = [], []
+    for offset in range(-7, 0):
+        target = day + timedelta(days=offset)
+        try:
+            tariff(target)  # Never reuse another year's rates for history.
+            history.append(download(target))
+        except (Unavailable, ValueError, KeyError, TypeError, RuntimeError, OSError) as exc:
+            missing.append(str(target))
+            print(
+                f"vottle: warning: historical data unavailable for {target}: {exc}", file=sys.stderr
+            )
+    # Keep current prices atomic; history can be explicitly incomplete.
     write_json(
         ROOT / "data/prices.json",
         {
             "schema_version": 1,
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "days": datasets,
+            "history": history,
+            "history_missing": missing,
         },
     )
 

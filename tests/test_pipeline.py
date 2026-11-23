@@ -180,7 +180,10 @@ class Prices(unittest.TestCase):
     def test_tomorrow_absent_and_atomic_failure(self):
         day = date(2026, 11, 2)
         with (
-            patch("vottle.__main__.fetch", side_effect=[fixture(day), api.Unavailable()]),
+            patch(
+                "vottle.__main__.fetch",
+                side_effect=[fixture(day), api.Unavailable()] + [api.Unavailable()] * 7,
+            ),
             patch("vottle.__main__.write_json") as writer,
         ):
             acquire(day)
@@ -192,6 +195,57 @@ class Prices(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 acquire(day)
             writer.assert_not_called()
+
+    def test_history_complete_and_partial(self):
+        day = date(2026, 11, 2)
+
+        def source(target):
+            if target > day:
+                raise api.Unavailable()
+            return fixture(target)
+
+        with (
+            patch("vottle.__main__.fetch", side_effect=source),
+            patch("vottle.__main__.write_json") as writer,
+        ):
+            acquire(day)
+            bundle = writer.call_args.args[1]
+            self.assertEqual(len(bundle["history"]), 7)
+            self.assertEqual(bundle["history_missing"], [])
+            self.assertEqual(bundle["history"][0]["date"], "2026-10-26")
+            self.assertTrue(all(d["source_url"] and d["retrieved_at"] for d in bundle["history"]))
+
+        def partial(target):
+            if target < day:
+                raise ValueError("Malformed archive")
+            return source(target)
+
+        with (
+            patch("vottle.__main__.fetch", side_effect=partial),
+            patch("vottle.__main__.write_json") as writer,
+        ):
+            acquire(day)
+            bundle = writer.call_args.args[1]
+            self.assertEqual(bundle["history"], [])
+            self.assertEqual(len(bundle["history_missing"]), 7)
+            self.assertEqual(bundle["days"][0]["status"], "available")
+
+    def test_history_annual_boundary(self):
+        day = date(2026, 1, 2)
+
+        def source(target):
+            if target > day:
+                raise api.Unavailable()
+            return fixture(target)
+
+        with (
+            patch("vottle.__main__.fetch", side_effect=source),
+            patch("vottle.__main__.write_json") as writer,
+        ):
+            acquire(day)
+            bundle = writer.call_args.args[1]
+            self.assertEqual([d["date"] for d in bundle["history"]], ["2026-01-01"])
+            self.assertEqual(len(bundle["history_missing"]), 6)
 
     def test_synthetic_fixture(self):
         path = Path(__file__).parent / "fixtures/2026-11-01.json"

@@ -6,7 +6,7 @@ default:
 dev:
     python -m vottle dev
 
-# Download and validate official prices for today and tomorrow.
+# Download and validate today, tomorrow and seven days of history.
 fetch:
     python -m vottle fetch
 

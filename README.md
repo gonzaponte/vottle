@@ -6,7 +6,7 @@ Dashboard estático de precios horarios PVPC: gráfico interactivo, peajes, carg
 resumen diario, comparación del coste de consumo y tabla accesible. HTML, CSS y JavaScript
 sin frameworks; Python genera JSON validado desde ESIOS. Sin cuentas, cookies ni analítica.
 
-![Vista del dashboard con datos históricos oficiales y aviso de fecha](docs/preview.png)
+![Vista del dashboard con datos de demostración y referencia de siete días](docs/preview.png)
 
 ## Inicio (una sola vez)
 
@@ -100,6 +100,29 @@ El cálculo es consumo × precio horario, sin potencia fija, contador ni impuest
 Se omite la estimación fiscal opcional. PVPC no equivale a una tarifa de mercado libre,
 y el coste variable no es la factura completa. El archivo no declara una fecha/hora de
 publicación: mostramos su fecha de validez y la hora de recuperación, sin inventarla.
+
+## Referencia de los siete días anteriores
+
+La banda gris muestra el mínimo y el máximo del **PVPC total a cada hora** durante
+los siete días naturales anteriores a la fecha seleccionada. No incluye el día
+seleccionado; para mañana, sí incluye hoy. Se puede ocultar con su control.
+Los tooltips indican los extremos, las fechas y cuántos días aportan datos a esa hora.
+La escala vertical es común para hoy y mañana y se mantiene al ocultar series o la
+banda. Incluye todos los componentes y ambas referencias, con un pequeño margen.
+
+La actualización descarga también los siete días anteriores desde ESIOS y publica
+los datos validados en `history`, aparte de `days` (hoy y mañana). `history_missing`
+identifica las fechas históricas no disponibles. No requiere base de datos, cachés
+persistentes ni commits de precios. Si falta historia se muestra la cobertura real,
+con huecos en las horas sin referencia; los precios actuales siguen disponibles.
+Sin historia aparece «Referencia histórica no disponible». Se validan los importes
+anuales de cada fecha; nunca se reutilizan tarifas de otro año.
+
+Las comparaciones usan la hora local de Madrid. En el cambio de otoño, ambas
+ocurrencias de una hora aportan valores al rango, contando como un único día.
+El gráfico repite ese rango en ambas ocurrencias. Los días de primavera sin esa
+hora no aportan muestras a ese tramo. Los colores de fondo siguen indicando los
+periodos regulados; la banda gris es una referencia del precio total.
 
 ## Actualización y GitHub Pages
 
@@ -225,4 +248,20 @@ nix shell --inputs-from . nixpkgs#chromium --command nix develop --command node 
 
 It checks a repository-subpath URL, chart rendering, detailed components, consumption input,
 theme, mobile overflow and unpublished tomorrow, and regenerates `docs/preview.png`.
-The committed preview uses genuine historical data with a visible stale-date warning.
+The committed preview uses explicitly labelled synthetic demonstration data.
+
+### Seven-day reference
+
+The gray band shows the lowest and highest total PVPC at each Madrid local hour over
+the seven calendar dates preceding the selected day. Today is excluded from today's
+reference and included in tomorrow's. A checkbox toggles the band. Tooltips show the
+range, reference dates and contributing-day count. Today and tomorrow share a padded
+y-axis covering their components and bands, even when series or the band are hidden.
+
+Each update refetches the rolling history from ESIOS. The JSON keeps today's/tomorrow's
+`days` and adds `history` with validated datasets and provenance, plus `history_missing`
+for unavailable dates. No database, price commits or persistent Actions cache is needed.
+Historical failures reduce coverage rather than block valid current prices. Missing
+hours leave gaps, and the UI explicitly labels partial or unavailable history.
+Repeated autumn hours share extrema but count once per day; absent spring hours
+contribute no observations. Missing annual rates are never replaced with another year's.

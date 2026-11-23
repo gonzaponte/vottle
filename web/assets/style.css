@@ -480,3 +480,7 @@ footer > a:not(.brand) {
     letter-spacing: -1px;
   }
 }
+
+.history-control {
+  margin-top: 18px;
+}

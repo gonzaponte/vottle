@@ -1,4 +1,11 @@
-import { statistics, cost, currentHour, madridDate } from "./calculations.mjs";
+import {
+  statistics,
+  cost,
+  currentHour,
+  madridDate,
+  historicalRange,
+  sharedBounds,
+} from "./calculations.mjs";
 const $ = (id) => document.getElementById(id);
 const decimal = (n, digits = 5) =>
   n.toLocaleString("es-ES", {
@@ -72,6 +79,48 @@ const shading = {
     ctx.restore();
   },
 };
+const historyBand = {
+  id: "historyRange",
+  beforeDatasetsDraw(chart, _args, options) {
+    if (!options.enabled) return;
+    const {
+      ctx,
+      chartArea: area,
+      scales: { x, y },
+    } = chart;
+    const width = (area.right - area.left) / options.ranges.length;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(
+      area.left,
+      area.top,
+      area.right - area.left,
+      area.bottom - area.top,
+    );
+    ctx.clip();
+    options.ranges.forEach((range, index) => {
+      if (!range) return;
+      const left = x.getPixelForValue(index) - width / 2;
+      const top = y.getPixelForValue(range.max * options.factor),
+        bottom = y.getPixelForValue(range.min * options.factor);
+      ctx.fillStyle = document.body.classList.contains("dark")
+        ? "rgba(210,220,230,0.16)"
+        : "rgba(65,80,100,0.12)";
+      ctx.fillRect(left, top, width, bottom - top);
+      ctx.strokeStyle = document.body.classList.contains("dark")
+        ? "#a5b7bd"
+        : "#607179";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(left, top);
+      ctx.lineTo(left + width, top);
+      ctx.moveTo(left, bottom);
+      ctx.lineTo(left + width, bottom);
+      ctx.stroke();
+    });
+    ctx.restore();
+  },
+};
 function render() {
   const hours = selected.hours,
     stats = statistics(hours),
@@ -81,6 +130,12 @@ function render() {
   );
   $("detail").disabled = !splitAvailable;
   if (!splitAvailable) $("detail").checked = false;
+  const reference = historicalRange(bundle, selected);
+  const bounds = sharedBounds(bundle);
+  $("history-range").disabled = reference.days === 0;
+  $("history-status").textContent = reference.days
+    ? `Banda gris: mínimo y máximo del PVPC a cada hora · ${reference.from} – ${reference.to} · ${reference.days}/7 días${reference.days < 7 ? " (referencia incompleta)" : ""}. La escala vertical es común para hoy y mañana.`
+    : "Referencia histórica no disponible. La escala vertical es común para hoy y mañana.";
   $("dashboard").hidden = false;
   $("average").textContent = decimal(stats.average);
   $("minimum").textContent = decimal(stats.minimum.total);
@@ -156,7 +211,7 @@ function render() {
   ];
   chart = new Chart($("chart"), {
     type: "line",
-    plugins: [shading],
+    plugins: [shading, historyBand],
     data: {
       labels: hours.map((h) => h.label),
       datasets: series.map(([label, key, borderColor]) => ({
@@ -175,6 +230,11 @@ function render() {
       maintainAspectRatio: false,
       interaction: { mode: "index", intersect: false },
       plugins: {
+        historyRange: {
+          factor,
+          enabled: $("history-range").checked && reference.days > 0,
+          ranges: reference.hours,
+        },
         legend: {
           position: "bottom",
           labels: {
@@ -186,6 +246,21 @@ function render() {
         },
         tooltip: {
           callbacks: {
+            afterBody: (items) => {
+              if (
+                !$("history-range").checked ||
+                !reference.days ||
+                !items.length
+              )
+                return [];
+              const range = reference.hours[items[0].dataIndex];
+              return range
+                ? [
+                    `Rango PVPC: ${decimal(range.min * factor, 6)} – ${decimal(range.max * factor, 6)} ${factor === 1 ? "€/kWh" : "cént./kWh"}`,
+                    `${reference.from} – ${reference.to} · ${range.days}/7 días con datos para esta hora`,
+                  ]
+                : ["Sin referencia histórica para esta hora"];
+            },
             label: (ctx) =>
               `${ctx.dataset.label}: ${decimal(ctx.parsed.y, 6)} ${factor === 1 ? "€/kWh" : "cént./kWh"}`,
           },
@@ -205,6 +280,8 @@ function render() {
           },
         },
         y: {
+          min: bounds.min * factor,
+          max: bounds.max * factor,
           ticks: { color },
           grid: { color: style.getPropertyValue("--border").trim() },
           title: {
@@ -275,6 +352,9 @@ function choose(index) {
 $("today").onclick = () => choose(0);
 $("tomorrow").onclick = () => choose(1);
 $("detail").onchange = () => {
+  if (selected) render();
+};
+$("history-range").onchange = () => {
   if (selected) render();
 };
 $("unit").onchange = () => {

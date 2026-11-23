@@ -9,3 +9,9 @@ The demo uses 2026-11-01 with seven synthetic preceding days (including autumn D
 Its `_provenance` records the URL and retrieval time. It reproduces the regulated
 calendar disagreement reported in GitHub Actions. It is used only in regression
 tests, never automatically substituted for the current day.
+
+`trends.json` contains 90 explicitly synthetic daily summaries ending on 2026-11-01.
+They are generated from 23/24/25-hour synthetic schedules with the formula
+`50 + (days_ago % 17) * 3 + (interval_index - 12)^2 * 0.7` EUR/MWh.
+The demo's existing hourly archives override their corresponding summary dates.
+These fixtures are isolated from the real disposable cache.

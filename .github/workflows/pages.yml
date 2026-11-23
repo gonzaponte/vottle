@@ -22,6 +22,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v31
       - run: nix develop --command just check
+      - uses: actions/cache@v4
+        with:
+          path: .cache/trends.json
+          key: pvpc-trends-v1-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: pvpc-trends-v1-${{ runner.os }}-
       - run: nix develop --command just update
       - uses: actions/upload-pages-artifact@v3
         with:

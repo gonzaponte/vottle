@@ -31,6 +31,11 @@ def fixture(day, negative=False):
 
 
 class Prices(unittest.TestCase):
+    def setUp(self):
+        collector = patch("vottle.__main__.collect_trends", return_value=[])
+        collector.start()
+        self.addCleanup(collector.stop)
+
     def test_normal_and_dst(self):
         for day, count in [
             (date(2026, 2, 3), 24),

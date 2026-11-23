@@ -55,8 +55,7 @@ def hours(day):
     return result
 
 
-def normalize(payload, day):
-    rates = tariff(day)
+def validated_hours(payload, day):
     rows = payload.get("PVPC") if isinstance(payload, dict) else None
     instants = hours(day)
     if not isinstance(rows, list) or len(rows) != len(instants):
@@ -67,8 +66,7 @@ def normalize(payload, day):
     ordinal = len(rows) == 25 and [r.get("Hora") for r in rows] == [
         f"{i:02}-{i + 1:02}" for i in range(25)
     ]
-    normalized = []
-    mismatched_hours = []
+    result = []
     for index, (row, instant) in enumerate(zip(rows, instants, strict=True)):
         if day != datetime.strptime(row["Dia"], "%d/%m/%Y").date():
             raise ValueError("Source date differs from requested date")
@@ -78,7 +76,17 @@ def normalize(payload, day):
         expected_hour = index if ordinal else instant.hour
         if not match or int(match[1]) != expected_hour or int(match[2]) != expected_hour + 1:
             raise ValueError(f"Unexpected source hour {label!r} at {instant}")
-        total, published = number(row["PCB"]) / 1000, number(row["TEUPCB"]) / 1000
+        result.append((row, instant, number(row["PCB"]) / 1000))
+    return result
+
+
+def normalize(payload, day):
+    rates = tariff(day)
+    normalized = []
+    mismatched_hours = []
+    for row, instant, total in validated_hours(payload, day):
+        label = row["Hora"]
+        published = number(row["TEUPCB"]) / 1000
         name = period(instant, rates)
         access = number(rates["periods"][name]["peajes"])
         charges = number(rates["periods"][name]["cargos"])

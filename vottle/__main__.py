@@ -10,6 +10,7 @@ from pathlib import Path
 
 from .api import Unavailable, fetch, source_url
 from .pricing import MADRID, ROOT, normalize, tariff
+from .trends import collect_trends
 
 
 def write_json(path, value):
@@ -20,12 +21,15 @@ def write_json(path, value):
 
 
 def acquire(day, fixture_dir=None):
+    responses = {}
+
     def download(target):
         payload = (
             json.loads((fixture_dir / f"{target}.json").read_text())
             if fixture_dir
             else fetch(target)
         )
+        responses[str(target)] = payload
         dataset = normalize(payload, target)
         dataset.update(
             status="available",
@@ -73,6 +77,9 @@ def acquire(day, fixture_dir=None):
             "days": datasets,
             "history": history,
             "history_missing": missing,
+            "trends": collect_trends(
+                day, responses, fetch, ROOT / ".cache/trends.json", fixture_dir
+            ),
         },
     )
 

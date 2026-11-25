@@ -106,19 +106,9 @@ const historyBand = {
       const top = y.getPixelForValue(range.max * options.factor),
         bottom = y.getPixelForValue(range.min * options.factor);
       ctx.fillStyle = document.body.classList.contains("dark")
-        ? "rgba(210,220,230,0.16)"
-        : "rgba(65,80,100,0.12)";
+        ? "rgba(210,220,230,0.07)"
+        : "rgba(65,80,100,0.05)";
       ctx.fillRect(left, top, width, bottom - top);
-      ctx.strokeStyle = document.body.classList.contains("dark")
-        ? "#a5b7bd"
-        : "#607179";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(left, top);
-      ctx.lineTo(left + width, top);
-      ctx.moveTo(left, bottom);
-      ctx.lineTo(left + width, bottom);
-      ctx.stroke();
     });
     ctx.restore();
   },
